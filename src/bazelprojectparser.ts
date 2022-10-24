@@ -1,55 +1,82 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
 
-export class BazelProjectParser {
-    private directories: string[];
-    private targets: string[];
+const COMMENT_REGEX = /#(.)*(\n|\z)/gm;
+const HEADER_REGEX = /^[^:\-\/*\s]+[: ]/gm;
+const WHITESPACE_CHAR_REGEX = /\s+/;
+const EXCLUDED_ENTRY_PREFIX = "-";
 
-    constructor() {
-        this.directories = [];
-        this.targets = [];
-    }
+function parseProjectFile(filePath: string): BazelProjectFile {
+  if (fs.existsSync(filePath)) {
+    let fileContent = fs.readFileSync(filePath, { encoding: "utf-8" });
+    fileContent = removeComments(fileContent);
 
-    getModules(): string[] {
-        return this.getDirectories();
-    }
+    const rawSections = parseRawSections(fileContent);
 
-    getDirectories(): string[] {
-        return this.directories;
-    }
+    return { directories: parseDirectories(rawSections), targets: parseTargets(rawSections) };
+  } else {
+    throw new Error(`bazel project file at ${filePath} does not exist`);
+  }
+}
 
-    getTargets(): string[] {
-        return this.targets;
-    }
+function parseDirectories(rawSections: RawSection[]): string[] {
+  return parseNamedSection("directories", rawSections)
+    .filter((s) => s !== EXCLUDED_ENTRY_PREFIX);
+}
 
-    readBazelProject(folder: string) {
-        const DIRECTORIES_SECTION: string = "directories:";
-        const TARGETS_SECTION: string = "targets:";
+function parseTargets(rawSections: RawSection[]): string[] {
+  return parseNamedSection("targets", rawSections)
+    .filter((s) => s !== EXCLUDED_ENTRY_PREFIX);
+}
 
-        const bazelProjectFile: string = path.join(folder, '.bazelproject');
-        if (fs.existsSync(bazelProjectFile)) {
-            const content: string = fs.readFileSync(bazelProjectFile, { encoding: 'UTF-8', flag: 'r' });
-            const lines = content.split(/\r?\n/);
-            const filteredLines = lines.filter( //
-                (line) => line && line.trim().length > 0 && (!line.trim().startsWith('#'))  //
-            );
-            const option = lines.shift();
-            let isDirectories: boolean = false;
+function parseNamedSection(
+  sectionName: string,
+  rawSections: RawSection[]
+): string[] {
+  return rawSections
+    .filter((rs) => rs.name === sectionName)
+    .flatMap((rs) => rs.body.split(WHITESPACE_CHAR_REGEX))
+    .filter((v) => v !== "");
+}
 
-            filteredLines.forEach((line) => {
-                line = line.trim();
-                if (DIRECTORIES_SECTION === line) {
-                    isDirectories = true;
-                } else if (TARGETS_SECTION === line) {
-                    isDirectories = false;
-                } else {
-                    if (isDirectories) {
-                        this.directories.push(line);
-                    } else {
-                        this.targets.push(line);
-                    }
-                }
-            });
-        }
-    }
+function parseRawSections(projectFileContents: string): RawSection[] {
+  const result = new Array<RawSection>();
+
+  let headers = projectFileContents
+    .match(HEADER_REGEX)
+    ?.map(h => h.replace(':', ''));
+
+
+  let bodies = projectFileContents.split(HEADER_REGEX);
+
+  if (headers?.length !== bodies.length - 1) {
+    throw new Error(
+      `Syntax error in .bazelproject: The number of section headers doesn't match the number of section bodies (${
+        headers?.length
+      } != ${bodies.length}; header: ${headers?.join(",")}).`
+    );
+  }
+
+  headers.forEach((value, idx) =>
+    result.push({ name: value, body: bodies[idx + 1].trim() })
+  );
+
+  return result;
+}
+
+function removeComments(bazelProjectFileContent: string): string {
+  return bazelProjectFileContent.replace(COMMENT_REGEX, "\n");
+}
+
+export interface BazelProjectFile {
+  directories: string[];
+  targets: string[];
+}
+
+interface RawSection {
+  name: string;
+  body: string;
+}
+
+export function readBazelProject(bazelProjectFile: string): BazelProjectFile {
+  return parseProjectFile(bazelProjectFile);
 }

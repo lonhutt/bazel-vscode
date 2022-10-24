@@ -21,6 +21,7 @@
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
+			"cwd": "/Users/lon.hutt/Development/bazel-ls-demo-project/small",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],

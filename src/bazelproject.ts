@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import * as bazelmodule from './bazelmodule';
-import * as projectparser from './bazelprojectparser';
-import * as vscodeworkspace from './workspace';
+import {BazelModule} from './bazelmodule';
+import { readBazelProject } from './bazelprojectparser';
+import { VsCodeWorkspace } from './workspace';
 
 export class BazelProject {
     private readonly codeWorkspaceExt: string = '.code-workspace';
@@ -12,13 +12,14 @@ export class BazelProject {
 
     private _sourceWorkspace: string;
     private _sourceFolder: string;
+    private _intellijProjectFolder: string;
     private _targetFolder: string;
 
     constructor(src: string, trg: string) {
         this._sourceWorkspace = src;
         this._targetFolder = trg;
         this._sourceFolder = path.dirname(this._sourceWorkspace);
-
+        this._intellijProjectFolder = path.join(this.sourceFolder, '.ijwb');
     }
 
     public get sourceWorkspace(): string {
@@ -29,24 +30,29 @@ export class BazelProject {
         return this._sourceFolder;
     }
 
+    public get intellijProjectFolder(): string {
+        return this._intellijProjectFolder;
+    }
+
     public get targetFolder(): string {
         return this._targetFolder;
     }
 
-    public openProject(modules: bazelmodule.BazelModule[]) {
-        this.buildBazelProject(modules, this._sourceFolder);
+    public openProject(modules: BazelModule[]) {
+        this.buildBazelProject(modules, this._intellijProjectFolder);
         this.buildCodeWorkspace(modules, this._sourceFolder);
         this.openFolder(path.join(this._sourceFolder, this.codeWorkspaceFile));
     }
 
-    public lookupModules(): bazelmodule.BazelModule[] {
-        let modules: bazelmodule.BazelModule[] = [];
+    public lookupModules(): BazelModule[] {
+        let modules: BazelModule[] = [];
         if (fs.existsSync(this._sourceFolder)) {
-            const parser: projectparser.BazelProjectParser = new projectparser.BazelProjectParser();
-            parser.readBazelProject(this._sourceFolder);
-            const preselectedModules: string[] = parser.getModules();
+            const bazelProject = readBazelProject(path.join(this._intellijProjectFolder, '.bazelproject'));
+            // const parser: projectparser.BazelProjectParser = new projectparser.BazelProjectParser();
+            // parser.readBazelProject(this._sourceFolder);
+            const preselectedModules: string[] = bazelProject.directories;
 
-            const topmodules: bazelmodule.BazelModule[] = this.readfolders(undefined);
+            const topmodules: BazelModule[] = this.readfolders(undefined);
             topmodules.forEach((current) => {
                 const isBuild: boolean = this.buildHierarchy(current, preselectedModules);
                 if (true === isBuild) {
@@ -57,24 +63,21 @@ export class BazelProject {
         return modules;
     }
 
-    private buildCodeWorkspace(modules: bazelmodule.BazelModule[], folder: string) {
-        const codeWorkspaceFile: vscodeworkspace.VsCodeWorkspace = new vscodeworkspace.VsCodeWorkspace(folder, modules);
-        const vscodeWorkspace = path.join(folder, this.codeWorkspaceFile);
-        const content: string = JSON.stringify(codeWorkspaceFile, null, 2);
-
-        fs.writeFileSync(vscodeWorkspace, content);
+    private buildCodeWorkspace(modules: BazelModule[], folder: string,) {
+        const codeWorkspaceFile: VsCodeWorkspace = new VsCodeWorkspace(modules);
+        codeWorkspaceFile.write(folder);
     }
 
-    private buildBazelProject(modules: bazelmodule.BazelModule[], folder: string) {
+    private buildBazelProject(modules: BazelModule[], folder: string) {
         const bazelprojectFile = path.join(folder, '.bazelproject');
         if (modules && modules.length > 0) {
             if (fs.existsSync(bazelprojectFile)) {
                 fs.renameSync(bazelprojectFile, bazelprojectFile + '.' + Date.now());
             }
             let fileContent = 'directories:' + os.EOL;
-            modules.//
-                filter((module) => true === module.selected).//
-                forEach((module) => {
+            modules
+                .filter((module) => true === module.selected)
+                .forEach((module) => {
                     const path: string = module.path;
                     fileContent = fileContent + '  ' + path + os.EOL;
                 });
@@ -109,7 +112,7 @@ export class BazelProject {
         }
     }
 
-    private buildHierarchy(parent: bazelmodule.BazelModule, preselected: string[]): boolean {
+    private buildHierarchy(parent: BazelModule, preselected: string[]): boolean {
         let isBuild = false;
 
         if (fs.existsSync(path.join(this.sourceFolder, parent.path, 'BUILD'))) {
@@ -124,11 +127,14 @@ export class BazelProject {
             parent.selected = true;
         }
 
-        const nested: bazelmodule.BazelModule[] = this.readfolders(parent);
+        const nested: BazelModule[] = this.readfolders(parent);
         if (nested) {
             nested.forEach(module => {
                 const buildModule: boolean = this.buildHierarchy(module, preselected);
                 if (buildModule) {
+                    if(!parent.nested){
+                        parent.nested = [];
+                    }
                     parent.nested.push(module);
                     isBuild = true;
                 }
@@ -137,16 +143,16 @@ export class BazelProject {
         return isBuild;
     }
 
-    private readfolders(base: bazelmodule.BazelModule | undefined): bazelmodule.BazelModule[] {
+    private readfolders(base: BazelModule | undefined): BazelModule[] {
         let absolutePath: string = (base ? path.join(this.sourceFolder, base.path) : this.sourceFolder);
-        const nested: bazelmodule.BazelModule[] = fs.readdirSync(absolutePath, { withFileTypes: true }).//
+        const nested: BazelModule[] = fs.readdirSync(absolutePath, { withFileTypes: true }).//
             filter(file => ((!file.name.startsWith('.')) && (!file.name.startsWith('src')) && file.isDirectory())).//
             map(file => {
-                const module: bazelmodule.BazelModule = new bazelmodule.BazelModule();
-                module.name = file.name;
-                module.selected = false;
-                module.path = base ? path.join(base.path, file.name) : file.name;
-                return module;
+                return {
+                    name: file.name,
+                    selected: false,
+                    path: base ? path.join(base.path, file.name) : file.name
+                };
             });
         return nested;
     }

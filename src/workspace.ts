@@ -1,30 +1,40 @@
-import * as bazelmodule from './bazelmodule';
+import * as path from 'path';
+import * as fs from 'fs';
+import { BazelModule } from './bazelmodule';
+import * as vscode from 'vscode';
+
+const WORKSPACE_NAME = 'workspace.code-workspace';
 
 export class VsCodeWorkspace {
     folders: VsCodePath[];
-    settings: any;
-    constructor(folder: string, modules: bazelmodule.BazelModule[]) {
-        this.folders = [];
-        this.folders.push({ path: folder });
+    settings: {[key:string]: any};
+    constructor(modules: BazelModule[]) {
+        const selectedModules = modules.filter(m=>m.selected);
+        this.folders = selectedModules.map(p => { return {path: p.path}; });
+
+        const excludeConfig: ExcludeConfig = {};
+        excludeConfig[`**/{${selectedModules.map(m=>m.path).join(',')}}`] = true;
+
         this.settings = {};
-        this.settings['files.exclude'] = this.buildExcludes(modules);
+        this.settings['files.exclude'] = excludeConfig;
         this.settings['java.configuration.updateBuildConfiguration'] = 'automatic';
     }
 
-    private buildExcludes(modules: bazelmodule.BazelModule[]): {} {
-        let exclude: any = {};
-        if (modules) {
-            modules.//
-                filter((module) => false === module.selected).//
-                forEach((module) => {
-                    exclude[module.path] = true;
-                });
-        }
-        return exclude;
+    public write(folder: string) {
+        this.folders.push({path: vscode.workspace.asRelativePath(folder)});
+        this.folders = this.folders.sort();
+        const vscodeWorkspace = path.join(folder, WORKSPACE_NAME);
+        const content: string = JSON.stringify(this, null, 2);
+
+        fs.writeFileSync(vscodeWorkspace, content);
     }
 }
 
-class VsCodePath {
-    constructor(public path: string) {
-    }
+interface VsCodePath {
+   path: string;
+   name?: string;
+}
+
+interface ExcludeConfig {
+	[key: string]: boolean;
 }

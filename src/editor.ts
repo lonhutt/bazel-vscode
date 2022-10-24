@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import * as bazelproject from './bazelproject';
 import * as bazelmodule from './bazelmodule';
 
@@ -54,7 +53,7 @@ function postLocation(fileUri: vscode.Uri[] | undefined, webPanel: vscode.Webvie
     }
 }
 
-export function getWebviewContent(panel: vscode.WebviewPanel, extCtx: vscode.ExtensionContext): string {
+export async function getWebviewContent(panel: vscode.WebviewPanel, extCtx: vscode.ExtensionContext): Promise<string> {
     const jQueryOnDiskPath = vscode.Uri.file(path.join(extCtx.extensionPath, '/js/jquery.js'));
     const jQuerySrc: vscode.Uri = panel.webview.asWebviewUri(jQueryOnDiskPath);
 
@@ -63,6 +62,9 @@ export function getWebviewContent(panel: vscode.WebviewPanel, extCtx: vscode.Ext
 
     const editorCssOnDiskPath = vscode.Uri.file(path.join(extCtx.extensionPath, '/css/editor.css'));
     const editoCssSrc: vscode.Uri = panel.webview.asWebviewUri(editorCssOnDiskPath);
+
+    const bazelWorkspaceFiles = (await vscode.workspace.findFiles("**/WORKSPACE"));
+    const bazelWorkspace = (bazelWorkspaceFiles.length >= 0) ? '' : bazelWorkspaceFiles[0].path;
 
     return `
     <!DOCTYPE html>
@@ -79,7 +81,7 @@ export function getWebviewContent(panel: vscode.WebviewPanel, extCtx: vscode.Ext
     <body>
         <div>
             <label for="workspaceLocation">Project WORKSPACE location</label>
-            <input type="text" id="workspaceLocation" name="workspaceLocation" style="width: 50%; height: 1.5em;">
+            <input type="text" id="workspaceLocation" name="workspaceLocation" value="${bazelWorkspace}" style="width: 50%; height: 1.5em;">
             <button id="browseWorkspace" name="browseWorkspace" style="height: 1.5em;">Browse...</button>
         </div>
         <div>
