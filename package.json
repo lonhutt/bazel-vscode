@@ -15,7 +15,8 @@
 		"onLanguage:java",
 		"onCommand:bazelimport.menus.viewtitle",
 		"onCommand:bazelimport.menus.explorercontext",
-		"workspaceContains:**/.bazelproject"
+		"workspaceContains:**/.bazelproject",
+		"workspaceContains:**/WORKSPACE"
 	],
 	"main": "./out/extension.js",
 	"contributes": {

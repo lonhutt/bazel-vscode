@@ -48,8 +48,6 @@ export class BazelProject {
         let modules: BazelModule[] = [];
         if (fs.existsSync(this._sourceFolder)) {
             const bazelProject = readBazelProject(path.join(this._intellijProjectFolder, '.bazelproject'));
-            // const parser: projectparser.BazelProjectParser = new projectparser.BazelProjectParser();
-            // parser.readBazelProject(this._sourceFolder);
             const preselectedModules: string[] = bazelProject.directories;
 
             const topmodules: BazelModule[] = this.readfolders(undefined);
@@ -71,6 +69,9 @@ export class BazelProject {
     private buildBazelProject(modules: BazelModule[], folder: string) {
         const bazelprojectFile = path.join(folder, '.bazelproject');
         if (modules && modules.length > 0) {
+            if(!fs.existsSync(folder)){
+                fs.mkdirSync(folder, {recursive: true});
+            }
             if (fs.existsSync(bazelprojectFile)) {
                 fs.renameSync(bazelprojectFile, bazelprojectFile + '.' + Date.now());
             }

@@ -60,7 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 	vscode.workspace.findFiles("**/.bazelproject").then(projFile => {
-		if(projFile.length >= 0){
+		if(projFile.length){
 			// make sure the vscode workspace is in sync with the .bazelproject file on extension activation
 			processBazelProjectFile(projFile[0].path);
 			fs.watch(projFile[0].path, {}, (event, filename) => {
@@ -77,7 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
 // this method is called when your extension is deactivated
 export function deactivate() { 
 	if (bazelTaskProvider) {
-		bazelTaskProvider.dispose();
+		bazelTaskProvider.dispose(); 
 	}
 }
 
@@ -104,7 +104,7 @@ async function processBazelProjectFile(bazelProjectPath: string) {
 			//TODO: create new vscode workspace based on .bazelproject file and open it.
 			console.log('non multi root');
 
-			const codeWorkspaceFile: VsCodeWorkspace = new VsCodeWorkspace(bazelProject.directories.map(d => {return {path: d, selected: true}}));
+			const codeWorkspaceFile: VsCodeWorkspace = new VsCodeWorkspace(bazelProject.directories.map(d => {return {path: d, selected: true};}));
 			codeWorkspaceFile.write(workspaceURI.uri.path);
 
 		}

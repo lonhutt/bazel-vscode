@@ -14,7 +14,7 @@ function parseProjectFile(filePath: string): BazelProjectFile {
 
     return { directories: parseDirectories(rawSections), targets: parseTargets(rawSections) };
   } else {
-    throw new Error(`bazel project file at ${filePath} does not exist`);
+    return {directories: [], targets: []};
   }
 }
 
