@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import {BazelModule} from './bazelmodule';
+import { BazelModule, BazelModuleQuickPickItem } from './bazelmodule';
 import { readBazelProject } from './bazelprojectparser';
 import { VsCodeWorkspace } from './workspace';
 
@@ -157,4 +157,41 @@ export class BazelProject {
             });
         return nested;
     }
+}
+
+export async function importBazelProject(bazelWorkspaceFiles: vscode.Uri[]) {
+	const bi = new BazelProject(bazelWorkspaceFiles[0].fsPath, '');
+	const modules = bi.lookupModules();
+	if (modules.length === 0) {
+		await vscode.window.showInformationMessage('No modules found in this workspace');
+		return;
+	}
+
+	const quickPickItems = createBazelModuleQuickPickItems(modules);
+	const selectedItems = await vscode.window.showQuickPick(quickPickItems, {
+		title: 'Bazel Modules',
+		placeHolder: 'Pick modules to import',
+		canPickMany: true,
+	});
+	if (selectedItems === undefined || selectedItems.length === 0) {
+		return;
+	}
+
+	const selectedModules = selectedItems.map(item => {
+		item.module.selected = true;
+		return item.module;
+	});
+	bi.openProject(selectedModules);
+}
+
+function createBazelModuleQuickPickItems(modules: BazelModule[]): BazelModuleQuickPickItem[] {
+	const result: BazelModuleQuickPickItem[] = [];
+	for (const module of modules) {
+		result.push(new BazelModuleQuickPickItem(module));
+		if (module.nested) {
+			const nestedModules = createBazelModuleQuickPickItems(module.nested);
+			result.push(...nestedModules);
+		}
+	}
+	return result;
 }

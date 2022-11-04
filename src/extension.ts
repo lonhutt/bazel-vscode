@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as pieditor from './editor';
+import { importBazelProject } from './bazelproject';
 import { BazelTaskProvider } from './bazelTaskProvider';
 import { readBazelProject } from './bazelprojectparser';
 import { VsCodeWorkspace } from './workspace';
@@ -8,12 +9,12 @@ import * as fs from 'fs';
 
 let bazelTaskProvider: vscode.Disposable | undefined;
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	let panel: vscode.WebviewPanel | undefined = undefined;
 
 	console.log('Extension "bazelimport" is now active!');
 
-	let viewTitleDisp = vscode.commands.registerCommand('bazelimport.menus.viewtitle', async () => {
+	context.subscriptions.push(vscode.commands.registerCommand('bazelimport.menus.viewtitle', async () => {
 		const columnToShowIn = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -52,26 +53,29 @@ export function activate(context: vscode.ExtensionContext) {
 				context.subscriptions
 			);
 		}
-	});
-
-	context.subscriptions.push(viewTitleDisp);
+	}));
 
 	bazelTaskProvider = vscode.tasks.registerTaskProvider(BazelTaskProvider.BazelType, new BazelTaskProvider());
 
-
-	vscode.workspace.findFiles("**/.bazelproject").then(projFile => {
-		if(projFile.length){
-			// make sure the vscode workspace is in sync with the .bazelproject file on extension activation
-			processBazelProjectFile(projFile[0].path);
-			fs.watch(projFile[0].path, {}, (event, filename) => {
-				console.log(`${filename} was ${event}!`);
-				if(event === 'change'){
-					processBazelProjectFile(projFile[0].path);
-				}
-			});
+	const bazelWorkspaceFiles = await vscode.workspace.findFiles("**/WORKSPACE");
+	const bazelProjectFiles = await vscode.workspace.findFiles("**/.bazelproject");
+	if (bazelWorkspaceFiles.length > 0 && bazelProjectFiles.length === 0) {
+		const askToImport = await vscode.window.showInformationMessage('Would you like to setup this workspace as a Bazel workspace?', 'Yes', 'No');
+		if (askToImport === 'Yes') {
+			importBazelProject(bazelWorkspaceFiles);
 		}
-	});
+	}
 
+	if (bazelProjectFiles.length) {
+		// make sure the vscode workspace is in sync with the .bazelproject file on extension activation
+		processBazelProjectFile(bazelProjectFiles[0].path);
+		fs.watch(bazelProjectFiles[0].path, {}, (event, filename) => {
+			console.log(`${filename} was ${event}!`);
+			if (event === 'change') {
+				processBazelProjectFile(bazelProjectFiles[0].path);
+			}
+		});
+	}
 }
 
 // this method is called when your extension is deactivated
