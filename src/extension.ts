@@ -55,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}));
 
-	bazelTaskProvider = vscode.tasks.registerTaskProvider(BazelTaskProvider.BazelType, new BazelTaskProvider());
+	bazelTaskProvider = vscode.tasks.registerTaskProvider(BazelTaskProvider.BAZEL_TYPE, new BazelTaskProvider());
 
 	const bazelWorkspaceFiles = await vscode.workspace.findFiles("**/WORKSPACE");
 	const bazelProjectFiles = await vscode.workspace.findFiles("**/.bazelproject");

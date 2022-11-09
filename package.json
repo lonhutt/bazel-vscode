@@ -15,16 +15,11 @@
 		"onLanguage:java",
 		"onCommand:bazelimport.menus.viewtitle",
 		"onCommand:bazelimport.menus.explorercontext",
-		"workspaceContains:**/.bazelproject",
-		"workspaceContains:**/WORKSPACE"
+		"workspaceContains:**/.bazelproject"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"javaExtensions": [
-			"./bazel-eclipse/bundles/com.salesforce.b2eclipse.jdt.ls/target/com.salesforce.b2eclipse.jdt.ls.jar",
-			"./bazel-eclipse/bundles/com.salesforce.bazel-java-sdk/target/com.salesforce.bazel-java-sdk.jar",
-			"./bazel-eclipse/bundles/com.salesforce.bazel.eclipse.common/target/com.salesforce.bazel.eclipse.common.jar"
-		],
+		
 		"javaBuildFilePatterns": [
 			"^WORKSPACE(\\.bazel)?$",
 			"^BUILD(\\.bazel)?$",
@@ -74,16 +69,16 @@
 				"type": "bazel",
 				"required": [
 					"name",
-					"task"
+					"target"
 				],
 				"properties": {
 					"name": {
 						"type": "string",
 						"description": "The task name"
 					},
-					"task": {
+					"target": {
 						"type": "string",
-						"description": "The task command"
+						"description": "The target command"
 					}
 				}
 			}
