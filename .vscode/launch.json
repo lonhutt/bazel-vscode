@@ -51,6 +51,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": ["--extensionDevelopmentPath=${workspaceFolder}" ],
+			"cwd": "/Users/lon.hutt/Development/bazel-ls-demo-project/small",
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],

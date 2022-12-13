@@ -14,6 +14,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	console.log('Extension "bazelimport" is now active!');
 
+	vscode.commands.executeCommand("java.projectConfiguration.update");
+
 	context.subscriptions.push(vscode.commands.registerCommand('bazelimport.menus.viewtitle', async () => {
 		const columnToShowIn = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
